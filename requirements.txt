@@ -1,2 +1,2 @@
-! pip install dash
+dash
 gunicorn==19.7.1
