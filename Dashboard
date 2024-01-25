@@ -72,6 +72,7 @@ grouped_batsman_data = grouped_batsman_data.reset_index()
 
 # Initialize the Dash app
 app = dash.Dash(__name__)
+server = app.server
 
 # Define the layout of the app with tabs
 app.layout = html.Div([
@@ -408,4 +409,4 @@ def update_data_table_batsman(selected_seasons, selected_batsmen):
 
 # Run the app
 if __name__ == '__main__':
-    app.run_server(debug=True, jupyter_mode="external")
+    app.run_server(debug=False)
