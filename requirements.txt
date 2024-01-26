@@ -1,4 +1,4 @@
-python_version==3.10.0
+python_version==3.10.13
 Pandas==2.0.3
 Dash==2.14.2
 dash_core_components==2.0.0
