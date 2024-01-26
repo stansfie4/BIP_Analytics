@@ -39,10 +39,39 @@ grouped_bowler_data = full_data.groupby(['SEASON', 'BOWLER']).agg({'DELIVERED' :
 
 grouped_bowler_data['OVERS'] = np.floor(grouped_bowler_data['DELIVERED'] / 6) \
                                     + grouped_bowler_data['DELIVERED'] % 6 / 10
+grouped_bowler_data['TRUE_OVERS'] = grouped_bowler_data['DELIVERED'] / 6
 
 grouped_bowler_data['ECONOMY'] = round(grouped_bowler_data['RUNS'] \
-                                    / grouped_bowler_data['OVERS'], 2)
-overs = grouped_bowler_data.pop('OVERS')
+                                    / grouped_bowler_data['TRUE_OVERS'], 2)
+grouped_bowler_data['WICKET RATE'] = round(grouped_bowler_data['WICKET'] \
+                                    / grouped_bowler_data['TRUE_OVERS'], 2)
+grouped_bowler_data['DOT RATE'] = round(grouped_bowler_data['DOT'] \
+                                    / grouped_bowler_data['TRUE_OVERS'], 2)
+grouped_bowler_data['WIDE RATE'] = round(grouped_bowler_data['WIDE BALLS'] \
+                                    / grouped_bowler_data['TRUE_OVERS'], 2)
+grouped_bowler_data = grouped_bowler_data.merge(grouped_bowler_data
+                                                .groupby('SEASON')[['ECONOMY', 'WICKET RATE', 'DOT RATE', 'WIDE RATE']]
+                                                .transform('mean')
+                                                .rename(columns={'ECONOMY' : 'season_mean_economy',
+                                                                 'WICKET RATE' : 'season_mean_wicket',
+                                                                 'DOT RATE' : 'season_mean_dot',
+                                                                 'WIDE RATE' : 'season_mean_wide'}),
+                          left_index = True,
+                          right_index = True)
+grouped_bowler_data['ECONOMY+'] = round(grouped_bowler_data['season_mean_economy'] \
+                                    / grouped_bowler_data['ECONOMY'] * 100, 0)
+grouped_bowler_data['WICKET RATE+'] = round(grouped_bowler_data['WICKET RATE'] \
+                                    / grouped_bowler_data['season_mean_wicket'] * 100, 0)
+grouped_bowler_data['DOT RATE+'] = round(grouped_bowler_data['DOT RATE'] \
+                                    / grouped_bowler_data['season_mean_dot'] * 100, 0)
+grouped_bowler_data['WIDE RATE+'] = round(grouped_bowler_data['season_mean_wide'] \
+                                    / grouped_bowler_data['WIDE RATE'] * 100, 0)
+grouped_bowler_data.drop(columns = ['TRUE_OVERS',
+                                    'season_mean_economy',
+                                    'season_mean_wicket',
+                                    'season_mean_dot',
+                                    'season_mean_wide'], inplace = True)
+overs = grouped_bowler_data.pop('OVERS') # move overs to second column
 grouped_bowler_data.insert = grouped_bowler_data.insert(1, overs.name, overs)
 grouped_bowler_data = grouped_bowler_data.reset_index()
 #grouped_bowler_data.reset_index(inplace = True)
@@ -115,12 +144,17 @@ app.layout = html.Div([
                     {"name": i, "id": i} for i in grouped_bowler_data.columns
                 ],
                 data=grouped_bowler_data.to_dict('records'),
-                style_table={'overflowX': 'auto', 'border': '2px solid #4CAF50', 'boxShadow': '0px 0px 10px #888888'},
+                style_table={'overflowX': 'auto',
+                             'border': '2px solid #4CAF50',
+                             'boxShadow': '0px 0px 10px #888888',
+                             'width': '100%'},
                 style_header={'backgroundColor': '#4CAF50', 'color': 'white', 'textAlign': 'center', 'font-family': 'Arial, sans-serif'},
                 style_cell={'textAlign': 'center', 'font-family': 'Arial, sans-serif'},
                 sort_action='native',  # 'native' enables sorting on the client side
                 sort_mode='multi',  # 'multi' allows sorting by multiple columns
+                #fixed_columns={'headers': True, 'data': 2}
             ),
+            #style={'width': '100%'}
             
             html.Div(style={'marginBottom': 40}),
                     
@@ -141,6 +175,46 @@ app.layout = html.Div([
             dcc.Graph(
                 id='bar-chart-bowler',
                 style={'height': '400px'},
+            ),
+                    
+            html.Div(style={'marginBottom': 40}),
+                    
+            # Dropdown for X-axis selection
+            html.Label("Select X-axis:", style={'fontSize': 16, 'color': '#333'}),
+            dcc.Dropdown(
+                id='x-axis-scatter-dropdown-bowler',
+                options=[
+                    #{'label': 'DELIVERED', 'value': 'DELIVERED'}
+                    #{'label': col, 'value': col} for col in grouped_bowler_data.columns
+                    {'label': col, 'value': col} for col in grouped_bowler_data.columns if col not in ['SEASON', 'BOWLER']
+                ],
+                value='DELIVERED',
+                style={'marginBottom': 20}
+            ),
+                    
+            html.Label("Select Y-axis:", style={'fontSize': 16, 'color': '#333'}),
+            dcc.Dropdown(
+                id='y-axis-scatter-dropdown-bowler',
+                options=[
+                    #{'label': 'DELIVERED', 'value': 'DELIVERED'}
+                    #{'label': col, 'value': col} for col in grouped_bowler_data.columns
+                    {'label': col, 'value': col} for col in grouped_bowler_data.columns if col not in ['SEASON', 'BOWLER']
+                ],
+                value='DELIVERED',
+                style={'marginBottom': 20}
+            ),
+                    
+            # Scatter Plot
+            dcc.Graph(
+                id='scatter-plot-bowler',
+                figure={
+                    'data': [],
+                    'layout': {
+                        'xaxis': {'title': 'X-Axis'},
+                        'yaxis': {'title': 'Y-Axis'},
+                        'hovermode': 'closest',
+                    }
+                }
             )
         ]),
         
@@ -194,7 +268,6 @@ app.layout = html.Div([
             dcc.Dropdown(
                 id='y-axis-dropdown-batsman',
                 options=[
-                    #{'label': col, 'value': col} for col in grouped_batsman_data.columns
                     {'label': col, 'value': col} for col in grouped_batsman_data.columns if col not in ['SEASON', 'BATSMAN']
                 ],
                 value='INNINGS BATTED',
@@ -205,10 +278,50 @@ app.layout = html.Div([
             dcc.Graph(
                 id='bar-chart-batsman',
                 style={'height': '400px'},
+            ),
+                    
+            html.Div(style={'marginBottom': 40}),
+                    
+            # Dropdown for X-axis selection
+            html.Label("Select X-axis:", style={'fontSize': 16, 'color': '#333'}),
+            dcc.Dropdown(
+                id='x-axis-scatter-dropdown-batsman',
+                options=[
+                    #{'label': 'DELIVERED', 'value': 'DELIVERED'}
+                    #{'label': col, 'value': col} for col in grouped_bowler_data.columns
+                    {'label': col, 'value': col} for col in grouped_batsman_data.columns if col not in ['SEASON', 'BATSMAN']
+                ],
+                value='RUNS',
+                style={'marginBottom': 20}
+            ),
+                    
+            html.Label("Select Y-axis:", style={'fontSize': 16, 'color': '#333'}),
+            dcc.Dropdown(
+                id='y-axis-scatter-dropdown-batsman',
+                options=[
+                    #{'label': 'DELIVERED', 'value': 'DELIVERED'}
+                    #{'label': col, 'value': col} for col in grouped_bowler_data.columns
+                    {'label': col, 'value': col} for col in grouped_batsman_data.columns if col not in ['SEASON', 'BATSMAN']
+                ],
+                value='RUNS',
+                style={'marginBottom': 20}
+            ),
+                    
+            # Scatter Plot
+            dcc.Graph(
+                id='scatter-plot-batsman',
+                figure={
+                    'data': [],
+                    'layout': {
+                        'xaxis': {'title': 'X-Axis'},
+                        'yaxis': {'title': 'Y-Axis'},
+                        'hovermode': 'closest',
+                    }
+                }
             )
         ])
     ])
-], style={'font-family': 'Arial, sans-serif'})
+], style={'font-family': 'Arial, sans-serif'}) #, 'width': '90%', 'margin': 'auto'})
 
 
 # Callback for updating player selection list based on selected season for Bowler Data
@@ -303,6 +416,74 @@ def update_batsman_values(n_clicks_select_all, n_clicks_deselect_all):
 
 
 
+# Callback for updating Bowler Data Table
+@app.callback(
+    Output('data-table-bowler', 'data'),
+    [Input('season-toggle-bowler', 'value'),
+     Input('bowler-dropdown', 'value')]
+)
+def update_data_table_bowler(selected_seasons, selected_bowlers):
+    
+#     grouped_bowler_data = full_data.groupby(['SEASON', 'BOWLER']).agg({'DELIVERED' : 'sum',
+#                                                                    'RUNS' : 'sum',
+#                                                                    'WICKET' : 'count',
+#                                                                    'DOT' : 'sum',
+#                                                                    'WIDE BALLS' : 'sum',
+#                                                                    'EXTRA RUNS' : 'sum',
+#                                                                    "4's" : 'sum',
+#                                                                    "6's" : 'sum'
+#                                                           })
+
+#     grouped_bowler_data['OVERS'] = np.floor(grouped_bowler_data['DELIVERED'] / 6) \
+#                                     + grouped_bowler_data['DELIVERED'] % 6 / 10
+
+#     grouped_bowler_data['ECONOMY'] = round(grouped_bowler_data['RUNS'] \
+#                                     / grouped_bowler_data['OVERS'], 2)
+#     overs = grouped_bowler_data.pop('OVERS')
+#     grouped_bowler_data.insert = grouped_bowler_data.insert(1, overs.name, overs)
+#     grouped_bowler_data = grouped_bowler_data.reset_index()
+    #grouped_bowler_data.reset_index(inplace = True)
+
+
+    filtered_df = grouped_bowler_data[grouped_bowler_data['SEASON'].isin(selected_seasons) & grouped_bowler_data['BOWLER'].isin(selected_bowlers)]
+    table_data = filtered_df.to_dict('records')
+    return table_data
+
+
+# Callback for updating Batsman Data Table
+@app.callback(
+    Output('data-table-batsman', 'data'),
+    [Input('season-toggle-batsman', 'value'),
+     Input('batsman-dropdown', 'value')]
+)
+def update_data_table_batsman(selected_seasons, selected_batsmen):
+    
+#     grouped_batsman_data = full_data.groupby(['SEASON', 'BATSMAN']).agg({'GAME' : 'nunique',
+#                                                                      'INNINGS BATTED' : 'nunique',
+#                                                                      'DELIVERED' : 'sum',
+#                                                                    'RUNS' : 'sum',
+#                                                                    'WICKET' : 'count',
+#                                                                    'DOT' : 'sum',
+#                                                                    'WIDE BALLS' : 'sum',
+#                                                                    'EXTRA RUNS' : 'sum',
+#                                                                    "4's" : 'sum',
+#                                                                    "6's" : 'sum'
+#                                                           })
+
+#     grouped_batsman_data.rename(columns = {'DELIVERED' : 'BALLS FACED',
+#                                            'GAME' : 'GAMES'}, inplace = True)
+#     grouped_batsman_data['RUNS'] = grouped_batsman_data['RUNS'] - grouped_batsman_data['EXTRA RUNS']
+#     grouped_batsman_data['STRIKE RATE'] = round(grouped_batsman_data['RUNS'] \
+#                                             / grouped_batsman_data['BALLS FACED'] * 100, 1)
+#     grouped_batsman_data['AVG / INNINGS'] = round(grouped_batsman_data['RUNS'] \
+#                                             / grouped_batsman_data['INNINGS BATTED'], 2)
+#     grouped_batsman_data = grouped_batsman_data.reset_index()
+
+    
+    filtered_df = grouped_batsman_data[grouped_batsman_data['SEASON'].isin(selected_seasons) & grouped_batsman_data['BATSMAN'].isin(selected_batsmen)]
+    table_data = filtered_df.to_dict('records')
+    return table_data
+
 
 # Callback for updating bar chart based on selected options for Bowler Data
 @app.callback(
@@ -312,7 +493,6 @@ def update_batsman_values(n_clicks_select_all, n_clicks_deselect_all):
      Input('y-axis-dropdown-bowler', 'value')]
 )
 def update_barchart_bowler(selected_seasons, selected_bowlers, y_axis_column):
-    #filtered_df = grouped_bowler_data[grouped_bowler_data['BOWLER'].isin(selected_bowlers)]
     filtered_df = grouped_bowler_data[grouped_bowler_data['SEASON'].isin(selected_seasons) & grouped_bowler_data['BOWLER'].isin(selected_bowlers)]
     fig = px.bar(filtered_df,
                  x='BOWLER',
@@ -339,74 +519,56 @@ def update_barchart_batsman(selected_seasons, selected_batsman, y_axis_column):
     return fig
 
 
-# Callback for updating Bowler Data Table
+
+# Callback to update scatter plot based on selected axes for bowlers
 @app.callback(
-    Output('data-table-bowler', 'data'),
+    Output('scatter-plot-bowler', 'figure'),
     [Input('season-toggle-bowler', 'value'),
-     Input('bowler-dropdown', 'value')]
+     Input('bowler-dropdown', 'value'),
+     Input('x-axis-scatter-dropdown-bowler', 'value'),
+     Input('y-axis-scatter-dropdown-bowler', 'value')]
 )
-def update_data_table_bowler(selected_seasons, selected_bowlers):
-    
-    grouped_bowler_data = full_data.groupby(['SEASON', 'BOWLER']).agg({'DELIVERED' : 'sum',
-                                                                   'RUNS' : 'sum',
-                                                                   'WICKET' : 'count',
-                                                                   'DOT' : 'sum',
-                                                                   'WIDE BALLS' : 'sum',
-                                                                   'EXTRA RUNS' : 'sum',
-                                                                   "4's" : 'sum',
-                                                                   "6's" : 'sum'
-                                                          })
-
-    grouped_bowler_data['OVERS'] = np.floor(grouped_bowler_data['DELIVERED'] / 6) \
-                                    + grouped_bowler_data['DELIVERED'] % 6 / 10
-
-    grouped_bowler_data['ECONOMY'] = round(grouped_bowler_data['RUNS'] \
-                                    / grouped_bowler_data['OVERS'], 2)
-    overs = grouped_bowler_data.pop('OVERS')
-    grouped_bowler_data.insert = grouped_bowler_data.insert(1, overs.name, overs)
-    grouped_bowler_data = grouped_bowler_data.reset_index()
-    #grouped_bowler_data.reset_index(inplace = True)
-
-
+def update_scatter_plot_bowler(selected_seasons, selected_bowlers, x_axis, y_axis):
     filtered_df = grouped_bowler_data[grouped_bowler_data['SEASON'].isin(selected_seasons) & grouped_bowler_data['BOWLER'].isin(selected_bowlers)]
-    table_data = filtered_df.to_dict('records')
-    return table_data
+    
+    scatter_data = [
+        {'x': filtered_df[x_axis], 'y': filtered_df[y_axis], 'text': filtered_df['BOWLER'] + ', ' + filtered_df['SEASON'], 'mode': 'markers', 'type': 'scatter'}
+    ]
+
+    scatter_layout = {
+        'xaxis': {'title': x_axis},
+        'yaxis': {'title': y_axis},
+        'hovermode': 'closest',
+        'title' : f'{x_axis} vs. {y_axis}',
+    }
+
+    return {'data': scatter_data, 'layout': scatter_layout}
 
 
-# Callback for updating Batsman Data Table
+# Callback to update scatter plot based on selected axes for batsmen
 @app.callback(
-    Output('data-table-batsman', 'data'),
+    Output('scatter-plot-batsman', 'figure'),
     [Input('season-toggle-batsman', 'value'),
-     Input('batsman-dropdown', 'value')]
+     Input('batsman-dropdown', 'value'),
+     Input('x-axis-scatter-dropdown-batsman', 'value'),
+     Input('y-axis-scatter-dropdown-batsman', 'value')]
 )
-def update_data_table_batsman(selected_seasons, selected_batsmen):
-    
-    grouped_batsman_data = full_data.groupby(['SEASON', 'BATSMAN']).agg({'GAME' : 'nunique',
-                                                                     'INNINGS BATTED' : 'nunique',
-                                                                     'DELIVERED' : 'sum',
-                                                                   'RUNS' : 'sum',
-                                                                   'WICKET' : 'count',
-                                                                   'DOT' : 'sum',
-                                                                   'WIDE BALLS' : 'sum',
-                                                                   'EXTRA RUNS' : 'sum',
-                                                                   "4's" : 'sum',
-                                                                   "6's" : 'sum'
-                                                          })
-
-    grouped_batsman_data.rename(columns = {'DELIVERED' : 'BALLS FACED',
-                                           'GAME' : 'GAMES'}, inplace = True)
-    grouped_batsman_data['RUNS'] = grouped_batsman_data['RUNS'] - grouped_batsman_data['EXTRA RUNS']
-    grouped_batsman_data['STRIKE RATE'] = round(grouped_batsman_data['RUNS'] \
-                                            / grouped_batsman_data['BALLS FACED'] * 100, 1)
-    grouped_batsman_data['AVG / INNINGS'] = round(grouped_batsman_data['RUNS'] \
-                                            / grouped_batsman_data['INNINGS BATTED'], 2)
-    grouped_batsman_data = grouped_batsman_data.reset_index()
-
-    
+def update_scatter_plot_batsman(selected_seasons, selected_batsmen, x_axis, y_axis):
     filtered_df = grouped_batsman_data[grouped_batsman_data['SEASON'].isin(selected_seasons) & grouped_batsman_data['BATSMAN'].isin(selected_batsmen)]
-    table_data = filtered_df.to_dict('records')
-    return table_data
+    
+    scatter_data = [
+        {'x': filtered_df[x_axis], 'y': filtered_df[y_axis], 'text': filtered_df['BATSMAN'] + ', ' + filtered_df['SEASON'], 'mode': 'markers', 'type': 'scatter'}
+    ]
 
+    scatter_layout = {
+        'xaxis': {'title': x_axis},
+        'yaxis': {'title': y_axis},
+        'hovermode': 'closest',
+        'title' : f'{x_axis} vs. {y_axis}',
+    }
+
+    return {'data': scatter_data, 'layout': scatter_layout}
+    
 # Run the app
 if __name__ == '__main__':
     app.run_server(debug=False)
