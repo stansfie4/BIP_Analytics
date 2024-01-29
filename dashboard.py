@@ -25,7 +25,7 @@ full_data['EXTRA RUNS'] = full_data['WIDE BALLS'] * full_data['RUNS']
 full_data["4's"] = np.where(full_data['RUNS'] == 4, 1, 0)
 full_data["6's"] = np.where(full_data['RUNS'] == 6, 1, 0)
 
-full_data['INNINGS BATTED'] = full_data['GAME'] + full_data['INNING'].astype(str)
+full_data['INNINGS BATTED'] = full_data['GAME'].astype(str) + full_data['INNING'].astype(str)
 
 grouped_bowler_data = full_data.groupby(['SEASON', 'BOWLER']).agg({'DELIVERED' : 'sum',
                                                                    'RUNS' : 'sum',
