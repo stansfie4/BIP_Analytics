@@ -37,6 +37,8 @@ grouped_bowler_data = full_data.groupby(['SEASON', 'BOWLER']).agg({'DELIVERED' :
                                                                    "6's" : 'sum'
                                                           })
 
+# grouped_bowler_data['RUNS'] = grouped_bowler_data['RUNS'] \
+#                                             - grouped_bowler_data['EXTRA RUNS']
 grouped_bowler_data['OVERS'] = np.floor(grouped_bowler_data['DELIVERED'] / 6) \
                                     + grouped_bowler_data['DELIVERED'] % 6 / 10
 grouped_bowler_data['TRUE_OVERS'] = grouped_bowler_data['DELIVERED'] / 6
@@ -96,6 +98,21 @@ grouped_batsman_data['STRIKE RATE'] = round(grouped_batsman_data['RUNS'] \
                                             / grouped_batsman_data['BALLS FACED'] * 100, 1)
 grouped_batsman_data['AVG / INNINGS'] = round(grouped_batsman_data['RUNS'] \
                                             / grouped_batsman_data['INNINGS BATTED'], 2)
+grouped_batsman_data = grouped_batsman_data.merge(grouped_batsman_data
+                                                .groupby('SEASON')[['STRIKE RATE', 'AVG / INNINGS']]
+                                                .transform('mean')
+                                                .rename(columns={'STRIKE RATE' : 'season_mean_sr',
+                                                                 'AVG / INNINGS' : 'season_mean_api'
+                                                                }
+                                                       ),
+                          left_index = True,
+                          right_index = True)
+grouped_batsman_data['STRIKE RATE+'] = round(grouped_batsman_data['STRIKE RATE'] \
+                                        / grouped_batsman_data['season_mean_sr'] * 100, 0)
+grouped_batsman_data['AVG / INNINGS+'] = round(grouped_batsman_data['AVG / INNINGS'] \
+                                        / grouped_batsman_data['season_mean_api'] * 100, 0)
+grouped_batsman_data.drop(columns = ['season_mean_sr',
+                                    'season_mean_api'], inplace = True)
 grouped_batsman_data = grouped_batsman_data.reset_index()
 
 
@@ -568,6 +585,7 @@ def update_scatter_plot_batsman(selected_seasons, selected_batsmen, x_axis, y_ax
     }
 
     return {'data': scatter_data, 'layout': scatter_layout}
+
     
 # Run the app
 if __name__ == '__main__':
