@@ -553,7 +553,17 @@ def update_scatter_plot_bowler(selected_seasons, selected_bowlers, x_axis, y_axi
     filtered_df = grouped_bowler_data[grouped_bowler_data['SEASON'].isin(selected_seasons) & grouped_bowler_data['BOWLER'].isin(selected_bowlers)]
     
     scatter_data = [
-        {'x': filtered_df[x_axis], 'y': filtered_df[y_axis], 'text': filtered_df['BOWLER'] + ', ' + filtered_df['SEASON'], 'mode': 'markers', 'type': 'scatter'}
+        {'x': filtered_df[x_axis],
+         'y': filtered_df[y_axis],
+         'text': [f'{bowler}, {season}<br>{x_axis}: {x_val}<br>{y_axis}: {y_val}<br>' \
+                  for bowler, season, x_val, y_val in zip(filtered_df['BOWLER'],
+                                                           filtered_df['SEASON'],
+                                                           filtered_df[x_axis],
+                                                           filtered_df[y_axis])], 
+         'mode': 'markers',
+         'type': 'scatter',
+         'hoverinfo': 'text'
+        }
     ]
 
     scatter_layout = {
@@ -578,7 +588,17 @@ def update_scatter_plot_batsman(selected_seasons, selected_batsmen, x_axis, y_ax
     filtered_df = grouped_batsman_data[grouped_batsman_data['SEASON'].isin(selected_seasons) & grouped_batsman_data['BATSMAN'].isin(selected_batsmen)]
     
     scatter_data = [
-        {'x': filtered_df[x_axis], 'y': filtered_df[y_axis], 'text': filtered_df['BATSMAN'] + ', ' + filtered_df['SEASON'], 'mode': 'markers', 'type': 'scatter'}
+        {'x': filtered_df[x_axis],
+         'y': filtered_df[y_axis],
+         'text': [f'{batsman}, {season}<br>{x_axis}: {x_val}<br>{y_axis}: {y_val}<br>' \
+                  for batsman, season, x_val, y_val in zip(filtered_df['BATSMAN'],
+                                                           filtered_df['SEASON'],
+                                                           filtered_df[x_axis],
+                                                           filtered_df[y_axis])],       
+         'mode': 'markers',
+         'type': 'scatter',
+         'hoverinfo': 'text'
+        }
     ]
 
     scatter_layout = {
