@@ -164,12 +164,12 @@ app.layout = html.Div([
                 style_table={'overflowX': 'auto',
                              'border': '2px solid #4CAF50',
                              'boxShadow': '0px 0px 10px #888888',
-                             'width': '100%'},
+                             'minWidth': '100%'},
                 style_header={'backgroundColor': '#4CAF50', 'color': 'white', 'textAlign': 'center', 'font-family': 'Arial, sans-serif'},
                 style_cell={'textAlign': 'center', 'font-family': 'Arial, sans-serif'},
                 sort_action='native',  # 'native' enables sorting on the client side
                 sort_mode='multi',  # 'multi' allows sorting by multiple columns
-                #fixed_columns={'headers': True, 'data': 2}
+                fixed_columns={'headers': True, 'data': 2}
             ),
             #style={'width': '100%'}
             
@@ -271,11 +271,15 @@ app.layout = html.Div([
                     {"name": i, "id": i} for i in grouped_batsman_data.columns
                 ],
                 data=grouped_batsman_data.to_dict('records'),
-                style_table={'overflowX': 'auto', 'border': '2px solid #4CAF50', 'boxShadow': '0px 0px 10px #888888'},
+                style_table={'overflowX': 'auto',
+                             'border': '2px solid #4CAF50',
+                             'boxShadow': '0px 0px 10px #888888',
+                             'minWidth': '100%'},
                 style_header={'backgroundColor': '#4CAF50', 'color': 'white', 'textAlign': 'center', 'font-family': 'Arial, sans-serif'},
                 style_cell={'textAlign': 'center', 'font-family': 'Arial, sans-serif'},
                 sort_action='native',  # 'native' enables sorting on the client side
                 sort_mode='multi',  # 'multi' allows sorting by multiple columns
+                fixed_columns={'headers': True, 'data': 2}
             ),
                     
             html.Div(style={'marginBottom': 40}),
@@ -585,7 +589,6 @@ def update_scatter_plot_batsman(selected_seasons, selected_batsmen, x_axis, y_ax
     }
 
     return {'data': scatter_data, 'layout': scatter_layout}
-
     
 # Run the app
 if __name__ == '__main__':
