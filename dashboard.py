@@ -15,8 +15,6 @@ raw_data = pd.read_csv(f"https://docs.google.com/spreadsheets/d/{sheet_id}/expor
 
 full_data = raw_data.copy(deep=True)
 
-#full_data.loc[full_data['BATSMAN'] == 'Joez McFly', ['BATSMAN']] = 'Joez Mcfly'
-
 full_data['DELIVERED'] = np.where(full_data['BALL'] != 'WIDE', 1, 0)
 full_data['DOT'] = np.where((full_data['RUNS'] == 0) & 
                              (full_data['WICKET'].isna() == True), 1, 0)
@@ -184,8 +182,6 @@ app.layout = html.Div([
             dcc.Dropdown(
                 id='y-axis-dropdown-bowler',
                 options=[
-                    #{'label': 'DELIVERED', 'value': 'DELIVERED'}
-                    #{'label': col, 'value': col} for col in grouped_bowler_data.columns
                     {'label': col, 'value': col} for col in grouped_bowler_data.columns if col not in ['SEASON', 'BOWLER']
                 ],
                 value='DELIVERED',
@@ -218,7 +214,7 @@ app.layout = html.Div([
                 options=[
                     {'label': col, 'value': col} for col in grouped_bowler_data.columns if col not in ['SEASON', 'BOWLER']
                 ],
-                value='DELIVERED',
+                value='WICKET',
                 style={'marginBottom': 20}
             ),
             
@@ -304,7 +300,7 @@ app.layout = html.Div([
                 options=[
                     {'label': col, 'value': col} for col in grouped_batsman_data.columns if col not in ['SEASON', 'BATSMAN']
                 ],
-                value='INNINGS BATTED',
+                value='BALLS FACED',
                 style={'marginBottom': 20}
             ),
 
@@ -325,7 +321,7 @@ app.layout = html.Div([
                     #{'label': col, 'value': col} for col in grouped_bowler_data.columns
                     {'label': col, 'value': col} for col in grouped_batsman_data.columns if col not in ['SEASON', 'BATSMAN']
                 ],
-                value='RUNS',
+                value='BALLS FACED',
                 style={'marginBottom': 20}
             ),
             
@@ -338,7 +334,7 @@ app.layout = html.Div([
                     #{'label': col, 'value': col} for col in grouped_bowler_data.columns
                     {'label': col, 'value': col} for col in grouped_batsman_data.columns if col not in ['SEASON', 'BATSMAN']
                 ],
-                value='RUNS',
+                value='WICKET',
                 style={'marginBottom': 20}
             ),
             
@@ -636,14 +632,7 @@ def update_scatter_plot_batsman(selected_seasons, selected_batsmen, scatter_colo
         )
 
     return fig
-        
-    return fig
-
-
+    
 # Run the app
 if __name__ == '__main__':
-    app.run_server(debug=True, jupyter_mode="external")
-    
-# # Run the app
-# if __name__ == '__main__':
-#     app.run_server(debug=False)
+    app.run_server(debug=False)
