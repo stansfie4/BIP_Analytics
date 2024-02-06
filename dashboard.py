@@ -130,7 +130,10 @@ app.layout = html.Div([
                 style={'fontSize': 20, 'color': '#4CAF50'},
                 selected_style={'fontSize': 20, 'color': '#4CAF50', 'fontWeight': 'bold'},
                 children=[
+            html.Br(),
             html.Label("Select Season:", style={'fontSize': 16, 'color': '#333'}),
+            html.Br(),
+            html.Br(),
             dcc.Checklist(
                 id='season-toggle-bowler',
                 options=[
@@ -139,6 +142,7 @@ app.layout = html.Div([
                 value=grouped_bowler_data['SEASON'].unique(),
                 style={'marginBottom': 20, 'color': '#333'}
             ),
+            html.Br(),
             
             html.Label("Select Bowler(s):", style={'fontSize': 16, 'color': '#333'}),
             html.Button('Select All', id = 'select-all-bowlers', n_clicks = 0, style = {'fintSize': 16, 'marginBottom': 20}),
@@ -201,24 +205,29 @@ app.layout = html.Div([
             dcc.Dropdown(
                 id='x-axis-scatter-dropdown-bowler',
                 options=[
-                    #{'label': 'DELIVERED', 'value': 'DELIVERED'}
-                    #{'label': col, 'value': col} for col in grouped_bowler_data.columns
                     {'label': col, 'value': col} for col in grouped_bowler_data.columns if col not in ['SEASON', 'BOWLER']
                 ],
                 value='DELIVERED',
                 style={'marginBottom': 20}
             ),
-                    
+            
+            # Dropdown for Y-axis selection
             html.Label("Select Y-axis:", style={'fontSize': 16, 'color': '#333'}),
             dcc.Dropdown(
                 id='y-axis-scatter-dropdown-bowler',
                 options=[
-                    #{'label': 'DELIVERED', 'value': 'DELIVERED'}
-                    #{'label': col, 'value': col} for col in grouped_bowler_data.columns
                     {'label': col, 'value': col} for col in grouped_bowler_data.columns if col not in ['SEASON', 'BOWLER']
                 ],
                 value='DELIVERED',
                 style={'marginBottom': 20}
+            ),
+            
+            # Radio Button for Selecting Coloring Method      
+            html.Label("Select Coloring Method:", style={'fontSize': 16, 'color': '#333'}),
+            dcc.RadioItems(['Season', 'Overs Bowled'],
+                value='Season',
+                style={'marginBottom': 20},
+                id='scatter-color-bowler'
             ),
                     
             # Scatter Plot
@@ -240,7 +249,10 @@ app.layout = html.Div([
                 style={'fontSize': 20, 'color': '#4CAF50'},
                 selected_style={'fontSize': 20, 'color': '#4CAF50', 'fontWeight': 'bold'},
                 children=[
+            html.Br(),
             html.Label("Select Season:", style={'fontSize': 16, 'color': '#333'}),
+            html.Br(),
+            html.Br(),
             dcc.Checklist(
                 id='season-toggle-batsman',
                 options=[
@@ -249,7 +261,8 @@ app.layout = html.Div([
                 value=grouped_batsman_data['SEASON'].unique(),
                 style={'marginBottom': 20, 'color': '#333'}
             ),
-            
+            html.Br(),
+
             html.Label("Select Batsman(s):", style={'fontSize': 16, 'color': '#333'}),
             html.Button('Select All', id = 'select-all-batsman', n_clicks = 0, style = {'fintSize': 16, 'marginBottom': 20}),
             html.Button('Deselect All', id = 'deselect-all-batsman', n_clicks = 0, style = {'fintSize': 16, 'marginBottom': 20}), 
@@ -263,7 +276,7 @@ app.layout = html.Div([
                 #inline = True,
                 style={'marginBottom': 20, 'columnCount': 4}
             ),
-            
+
             html.H3("Batsman Data Table", style={'textAlign': 'center', 'color': '#4CAF50', 'marginBottom': 10}),
             dash_table.DataTable(
                 id='data-table-batsman',
@@ -281,9 +294,9 @@ app.layout = html.Div([
                 sort_mode='multi',  # 'multi' allows sorting by multiple columns
                 fixed_columns={'headers': True, 'data': 2}
             ),
-                    
+
             html.Div(style={'marginBottom': 40}),
-                    
+
             # Dropdown for Y-axis selection
             html.Label("Select Y-axis:", style={'fontSize': 16, 'color': '#333'}),
             dcc.Dropdown(
@@ -294,15 +307,15 @@ app.layout = html.Div([
                 value='INNINGS BATTED',
                 style={'marginBottom': 20}
             ),
-                    
+
             # Bar chart
             dcc.Graph(
                 id='bar-chart-batsman',
                 style={'height': '400px'},
             ),
-                    
+
             html.Div(style={'marginBottom': 40}),
-                    
+
             # Dropdown for X-axis selection
             html.Label("Select X-axis:", style={'fontSize': 16, 'color': '#333'}),
             dcc.Dropdown(
@@ -315,7 +328,8 @@ app.layout = html.Div([
                 value='RUNS',
                 style={'marginBottom': 20}
             ),
-                    
+            
+            # Dropdown for Y-axis selection
             html.Label("Select Y-axis:", style={'fontSize': 16, 'color': '#333'}),
             dcc.Dropdown(
                 id='y-axis-scatter-dropdown-batsman',
@@ -326,6 +340,14 @@ app.layout = html.Div([
                 ],
                 value='RUNS',
                 style={'marginBottom': 20}
+            ),
+            
+            # Radio Button for Selecting Coloring Method      
+            html.Label("Select Coloring Method:", style={'fontSize': 16, 'color': '#333'}),
+            dcc.RadioItems(['Season', 'Innings Batted'],
+                value='Season',
+                style={'marginBottom': 20},
+                id='scatter-color-batsman'
             ),
                     
             # Scatter Plot
@@ -546,34 +568,37 @@ def update_barchart_batsman(selected_seasons, selected_batsman, y_axis_column):
     Output('scatter-plot-bowler', 'figure'),
     [Input('season-toggle-bowler', 'value'),
      Input('bowler-dropdown', 'value'),
+     Input('scatter-color-bowler', 'value'),
      Input('x-axis-scatter-dropdown-bowler', 'value'),
      Input('y-axis-scatter-dropdown-bowler', 'value')]
 )
-def update_scatter_plot_bowler(selected_seasons, selected_bowlers, x_axis, y_axis):
+def update_scatter_plot_bowler(selected_seasons, selected_bowlers, scatter_color, x_axis, y_axis):
     filtered_df = grouped_bowler_data[grouped_bowler_data['SEASON'].isin(selected_seasons) & grouped_bowler_data['BOWLER'].isin(selected_bowlers)]
     
-    scatter_data = [
-        {'x': filtered_df[x_axis],
-         'y': filtered_df[y_axis],
-         'text': [f'{bowler}, {season}<br>{x_axis}: {x_val}<br>{y_axis}: {y_val}<br>' \
-                  for bowler, season, x_val, y_val in zip(filtered_df['BOWLER'],
-                                                           filtered_df['SEASON'],
-                                                           filtered_df[x_axis],
-                                                           filtered_df[y_axis])], 
-         'mode': 'markers',
-         'type': 'scatter',
-         'hoverinfo': 'text'
-        }
-    ]
+    if scatter_color == 'Season':
+        fig = px.scatter(
+            filtered_df,
+            x=x_axis,
+            y=y_axis,
+            color='SEASON',
+            size_max=10,
+            title=f'{x_axis} vs. {y_axis}',
+            hover_data=['BOWLER', 'OVERS']
+        )
+    elif scatter_color == 'Overs Bowled':
+        fig = px.scatter(
+            filtered_df,
+            x=x_axis,
+            y=y_axis,
+            color='OVERS',
+            color_continuous_scale='gray_r',
+            size_max=10,
+            title=f'{x_axis} vs. {y_axis}',
+            hover_data=['BOWLER', 'SEASON']
+        )
 
-    scatter_layout = {
-        'xaxis': {'title': x_axis},
-        'yaxis': {'title': y_axis},
-        'hovermode': 'closest',
-        'title' : f'{x_axis} vs. {y_axis}',
-    }
+    return fig
 
-    return {'data': scatter_data, 'layout': scatter_layout}
 
 
 # Callback to update scatter plot based on selected axes for batsmen
@@ -581,35 +606,44 @@ def update_scatter_plot_bowler(selected_seasons, selected_bowlers, x_axis, y_axi
     Output('scatter-plot-batsman', 'figure'),
     [Input('season-toggle-batsman', 'value'),
      Input('batsman-dropdown', 'value'),
+     Input('scatter-color-batsman', 'value'),
      Input('x-axis-scatter-dropdown-batsman', 'value'),
      Input('y-axis-scatter-dropdown-batsman', 'value')]
 )
-def update_scatter_plot_batsman(selected_seasons, selected_batsmen, x_axis, y_axis):
+def update_scatter_plot_batsman(selected_seasons, selected_batsmen, scatter_color, x_axis, y_axis):
     filtered_df = grouped_batsman_data[grouped_batsman_data['SEASON'].isin(selected_seasons) & grouped_batsman_data['BATSMAN'].isin(selected_batsmen)]
     
-    scatter_data = [
-        {'x': filtered_df[x_axis],
-         'y': filtered_df[y_axis],
-         'text': [f'{batsman}, {season}<br>{x_axis}: {x_val}<br>{y_axis}: {y_val}<br>' \
-                  for batsman, season, x_val, y_val in zip(filtered_df['BATSMAN'],
-                                                           filtered_df['SEASON'],
-                                                           filtered_df[x_axis],
-                                                           filtered_df[y_axis])],       
-         'mode': 'markers',
-         'type': 'scatter',
-         'hoverinfo': 'text'
-        }
-    ]
+    if scatter_color == 'Season':
+        fig = px.scatter(
+            filtered_df,
+            x=x_axis,
+            y=y_axis,
+            color='SEASON',
+            size_max=10,
+            title=f'{x_axis} vs. {y_axis}',
+            hover_data=['BATSMAN', 'INNINGS BATTED']
+        )
+    elif scatter_color == 'Innings Batted':
+        fig = px.scatter(
+            filtered_df,
+            x=x_axis,
+            y=y_axis,
+            color='INNINGS BATTED',
+            color_continuous_scale='gray_r',
+            size_max=10,
+            title=f'{x_axis} vs. {y_axis}',
+            hover_data=['BATSMAN', 'SEASON']
+        )
 
-    scatter_layout = {
-        'xaxis': {'title': x_axis},
-        'yaxis': {'title': y_axis},
-        'hovermode': 'closest',
-        'title' : f'{x_axis} vs. {y_axis}',
-    }
+    return fig
+        
+    return fig
 
-    return {'data': scatter_data, 'layout': scatter_layout}
-    
+
 # Run the app
 if __name__ == '__main__':
-    app.run_server(debug=False)
+    app.run_server(debug=True, jupyter_mode="external")
+    
+# # Run the app
+# if __name__ == '__main__':
+#     app.run_server(debug=False)
