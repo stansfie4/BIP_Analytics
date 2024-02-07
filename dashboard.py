@@ -15,6 +15,8 @@ raw_data = pd.read_csv(f"https://docs.google.com/spreadsheets/d/{sheet_id}/expor
 
 full_data = raw_data.copy(deep=True)
 
+full_data.loc[full_data['BATSMAN'] == 'Joez McFly', ['BATSMAN']] = 'Joez Mcfly'
+
 full_data['DELIVERED'] = np.where(full_data['BALL'] != 'WIDE', 1, 0)
 full_data['DOT'] = np.where((full_data['RUNS'] == 0) & 
                              (full_data['WICKET'].isna() == True), 1, 0)
