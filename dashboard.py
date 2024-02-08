@@ -56,6 +56,7 @@ def calc_batsman_columns (df, plus_stats):
     df['RUNS'] = df['RUNS'] - df['EXTRA RUNS']
     df['STRIKE RATE'] = round(df['RUNS'] / df['BALLS FACED'] * 100, 1)
     df['AVG / INNINGS'] = round(df['RUNS'] / df['INNINGS BATTED'], 2)
+    df['BALLS / WICKET'] = round(df['BALLS FACED'] / df['WICKET'], 2)
     df = df.merge(df.groupby('SEASON')[['STRIKE RATE', 'AVG / INNINGS']]
                   .transform('mean')
                   .rename(columns={'STRIKE RATE' : 'season_mean_sr',
