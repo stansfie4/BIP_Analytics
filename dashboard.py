@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 import math
 
-def calc_bowler_columns (df, plus_stats):
+def calc_bowler_columns (df, plus_stats, drop_index):
     
     # df['RUNS'] = df['RUNS'] \
     #                                             - df['EXTRA RUNS']
@@ -29,49 +29,65 @@ def calc_bowler_columns (df, plus_stats):
                               right_index = True)
     
     if plus_stats == True:
-        df['ECONOMY+'] = round(df['season_mean_economy'] \
-                                            / df['ECONOMY'] * 100, 0)
-        df['WICKET RATE+'] = round(df['WICKET RATE'] \
-                                            / df['season_mean_wicket'] * 100, 0)
-        df['DOT RATE+'] = round(df['DOT RATE'] \
-                                            / df['season_mean_dot'] * 100, 0)
-        df['WIDE RATE+'] = round(df['season_mean_wide'] \
-                                            / df['WIDE RATE'] * 100, 0)
+        df['ECONOMY+'] = round(df['season_mean_economy'] / df['ECONOMY'] * 100, 0)
+        df['WICKET RATE+'] = round(df['WICKET RATE'] / df['season_mean_wicket'] * 100, 0)
+        df['DOT RATE+'] = round(df['DOT RATE'] / df['season_mean_dot'] * 100, 0)
+        df['WIDE RATE+'] = round(df['season_mean_wide'] / df['WIDE RATE'] * 100, 0)
         
     df.drop(columns = ['TRUE_OVERS',
-                                        'season_mean_economy',
-                                        'season_mean_wicket',
-                                        'season_mean_dot',
-                                        'season_mean_wide'], inplace = True)
+                       'season_mean_economy',
+                       'season_mean_wicket',
+                       'season_mean_dot',
+                       'season_mean_wide'
+                      ], inplace = True)
     overs = df.pop('OVERS') # move overs to second column
     df.insert = df.insert(1, overs.name, overs)
-    df = df.reset_index()
+    df = df.reset_index(drop = drop_index)
 
     return df
 
-def calc_batsman_columns (df, plus_stats):
+def calc_batsman_columns (df, plus_stats, drop_index):
     
     df.rename(columns = {'DELIVERED' : 'BALLS FACED',
                                            'GAME' : 'GAMES'}, inplace = True)
     df['RUNS'] = df['RUNS'] - df['EXTRA RUNS']
     df['STRIKE RATE'] = round(df['RUNS'] / df['BALLS FACED'] * 100, 1)
-    df['AVG / INNINGS'] = round(df['RUNS'] / df['INNINGS BATTED'], 2)
+    
+    if 'INNINGS BATTED' in df.columns:
+        df['AVG / INNINGS'] = round(df['RUNS'] / df['INNINGS BATTED'], 2)
+    else:
+        df['AVG / INNINGS'] = round(df['RUNS'] / 2, 2)
+        
     df['BALLS / WICKET'] = round(df['BALLS FACED'] / df['WICKET'], 2)
-    df = df.merge(df.groupby('SEASON')[['STRIKE RATE', 'AVG / INNINGS']]
+    
+    if 'INNINGS BATTED' in df.columns:
+        df['BALLS / INNING'] = round(df['BALLS FACED'] / df['INNINGS BATTED'], 2)
+    else:
+        df['BALLS / INNING'] = round(df['BALLS FACED'] / 2, 2)
+    
+    df = df.merge(df.groupby('SEASON')[['STRIKE RATE', 'AVG / INNINGS', 'BALLS FACED', 'WICKET','BALLS / INNING']]
                   .transform('mean')
                   .rename(columns={'STRIKE RATE' : 'season_mean_sr',
-                                   'AVG / INNINGS' : 'season_mean_api'}),
+                                   'AVG / INNINGS' : 'season_mean_api',
+                                   'BALLS FACED': 'season_mean_balls',
+                                   'WICKET': 'season_mean_wicket',
+                                   'BALLS / INNING' : 'season_mean_bpi'}),
                               left_index = True,
                               right_index = True)
     
     if plus_stats == True:
-        df['STRIKE RATE+'] = round(df['STRIKE RATE'] \
-                                                / df['season_mean_sr'] * 100, 0)
-        df['AVG / INNINGS+'] = round(df['AVG / INNINGS'] \
-                                                / df['season_mean_api'] * 100, 0)
+        df['STRIKE RATE+'] = round(df['STRIKE RATE'] / df['season_mean_sr'] * 100, 0)
+        df['AVG / INNINGS+'] = round(df['AVG / INNINGS'] / df['season_mean_api'] * 100, 0)
+        df['BALLS / WICKET+'] = round(df['BALLS / WICKET'] / (df['season_mean_balls'] / df['season_mean_wicket'])* 100, 0)
+        df['BALLS / INNING+'] = round(df['BALLS / INNING'] / df['season_mean_bpi'] * 100, 0)
         
-    df.drop(columns = ['season_mean_sr', 'season_mean_api'], inplace = True)
-    df = df.reset_index()
+    df.drop(columns = ['season_mean_sr',
+                       'season_mean_api',
+                       'season_mean_balls',
+                       'season_mean_wicket',
+                       'season_mean_bpi'
+                      ], inplace = True)
+    df = df.reset_index(drop = drop_index)
 
     return df
 
@@ -84,6 +100,20 @@ raw_data = pd.read_csv(f"https://docs.google.com/spreadsheets/d/{sheet_id}/expor
 full_data = raw_data.copy(deep=True)
 
 full_data.loc[full_data['BATSMAN'] == 'Joez McFly', ['BATSMAN']] = 'Joez Mcfly'
+
+
+full_data['game_ID'] = full_data['SEASON'] + ', '\
+                            + full_data['GAME'].astype(str)
+
+full_data['inning_ID'] = full_data['SEASON'] + ', '\
+                            + full_data['GAME'].astype(str) + ', ' \
+                            + full_data['INNING'].astype(str)
+
+full_data['over_ID'] = full_data['SEASON'] + ', '\
+                            + full_data['GAME'].astype(str) + ', ' \
+                            + full_data['INNING'].astype(str) + ', ' \
+                            + full_data['OVER'].astype(str)
+
 
 full_data['DELIVERED'] = np.where(full_data['BALL'] != 'WIDE', 1, 0)
 full_data['DOT'] = np.where((full_data['RUNS'] == 0) & 
@@ -105,7 +135,9 @@ grouped_bowler_data = full_data.groupby(['SEASON', 'BOWLER']).agg({'DELIVERED' :
                                                                    "6's" : 'sum'
                                                           })
 
-grouped_bowler_data = calc_bowler_columns(grouped_bowler_data, plus_stats = True)
+grouped_bowler_data = calc_bowler_columns(grouped_bowler_data, 
+                                          plus_stats = True,
+                                          drop_index = False)
 
     
 grouped_batsman_data = full_data.groupby(['SEASON', 'BATSMAN']).agg({'GAME' : 'nunique',
@@ -121,7 +153,9 @@ grouped_batsman_data = full_data.groupby(['SEASON', 'BATSMAN']).agg({'GAME' : 'n
                                                           })
 
 
-grouped_batsman_data = calc_batsman_columns(grouped_batsman_data,  plus_stats = True)
+grouped_batsman_data = calc_batsman_columns(grouped_batsman_data,
+                                            plus_stats = True,
+                                            drop_index = False)
 
 
 grouped_bowling_team_data = full_data.groupby(['SEASON', 'BOWLING TEAM']).agg({'DELIVERED' : 'sum',
@@ -134,7 +168,9 @@ grouped_bowling_team_data = full_data.groupby(['SEASON', 'BOWLING TEAM']).agg({'
                                                                    "6's" : 'sum'
                                                           })
 
-grouped_bowling_team_data = calc_bowler_columns(grouped_bowling_team_data, plus_stats = False)
+grouped_bowling_team_data = calc_bowler_columns(grouped_bowling_team_data,
+                                                plus_stats = False,
+                                                drop_index = False)
 
     
 grouped_batting_team_data = full_data.groupby(['SEASON', 'BATTING TEAM']).agg({'GAME' : 'nunique',
@@ -150,7 +186,123 @@ grouped_batting_team_data = full_data.groupby(['SEASON', 'BATTING TEAM']).agg({'
                                                           })
 
 
-grouped_batting_team_data = calc_batsman_columns(grouped_batting_team_data,  plus_stats = False)
+grouped_batting_team_data = calc_batsman_columns(grouped_batting_team_data,
+                                                 plus_stats = True,
+                                                 drop_index = False)
+
+
+grouped_inning_data = full_data.groupby(['inning_ID']).agg({'game_ID': 'first',
+                                                            'SEASON' : 'first',
+                                                            'GAME' : 'first',
+                                                            'INNING' : 'first',
+                                                            'BOWLING TEAM' : 'first',
+                                                          'BATTING TEAM' : 'first',
+                                                          'DELIVERED' : 'sum',
+                                                                   'RUNS' : 'sum',
+                                                                   'WICKET' : 'count',
+                                                                   'DOT' : 'sum',
+                                                                   'WIDE BALLS' : 'sum',
+                                                                   'EXTRA RUNS' : 'sum',
+                                                                   "4's" : 'sum',
+                                                                   "6's" : 'sum'
+                                                          })
+
+grouped_game_data = grouped_inning_data.groupby(['game_ID', 'BATTING TEAM']).agg({'SEASON' : 'first',
+                                                        'BOWLING TEAM' : 'first',
+                                                        'INNING' : 'first',
+                                                        'DELIVERED' : 'sum',
+                                                        'RUNS' : 'sum',
+                                                                   'WICKET' : 'sum',
+                                                                   'DOT' : 'sum',
+                                                                   'WIDE BALLS' : 'sum',
+                                                                   'EXTRA RUNS' : 'sum',
+                                                                   "4's" : 'sum',
+                                                                   "6's" : 'sum'
+                                                          })
+grouped_game_data = grouped_game_data.reset_index()
+
+grouped_game_data.rename(columns = {'BATTING TEAM' : 'TEAM',
+                                    'BOWLING TEAM' : 'AGAINST TEAM'
+                                   }, inplace = True)
+
+grouped_game_data['First_Strike'] = (grouped_game_data['INNING'] - 2) * -1
+
+for games in grouped_game_data['game_ID'].unique():
+    grouped_game_data.at[grouped_game_data.loc[grouped_game_data['game_ID'] == games,
+                                               'RUNS'].idxmax(),
+                         'Win'] = 1
+    grouped_game_data.at[grouped_game_data.loc[grouped_game_data['game_ID'] == games,
+                                               'RUNS'].idxmin(),
+                         'Win'] = 0
+
+grouped_game_data.drop(columns = ['INNING'], inplace = True)    
+grouped_game_data.drop(grouped_game_data.loc[grouped_game_data['game_ID'] == "Captain's League 2024, 9"].index, inplace = True)
+
+
+average_game_data = grouped_game_data.groupby(['Win', 'SEASON']).agg({'DELIVERED' : 'mean',
+                                                                        'RUNS' : 'mean',
+                                                                   'WICKET' : 'mean',
+                                                                   'DOT' : 'mean',
+                                                                   'WIDE BALLS' : 'mean',
+                                                                   'EXTRA RUNS' : 'mean',
+                                                                   "4's" : 'mean',
+                                                                   "6's" : 'mean'})
+average_game_data = average_game_data.reset_index()
+
+winning_bowler_data = average_game_data.loc[average_game_data['Win'] == 0].drop(columns = ['Win'])
+winning_batsman_data = average_game_data.loc[average_game_data['Win'] == 1].drop(columns = ['Win'])
+losing_bowler_data = average_game_data.loc[average_game_data['Win'] == 1].drop(columns = ['Win'])
+losing_batsman_data = average_game_data.loc[average_game_data['Win'] == 0].drop(columns = ['Win'])
+
+winning_bowler_data = calc_bowler_columns(winning_bowler_data, plus_stats = False, drop_index = True)
+winning_batsman_data = calc_batsman_columns(winning_batsman_data, plus_stats = False, drop_index = True)
+losing_bowler_data = calc_bowler_columns(losing_bowler_data, plus_stats = False, drop_index = True)
+losing_batsman_data = calc_batsman_columns(losing_batsman_data, plus_stats = False, drop_index = True)
+
+winning_bowler_data = pd.concat([winning_bowler_data,
+                                 pd.DataFrame(winning_bowler_data
+                                              .select_dtypes(include = 'number')
+                                              .mean()).T],
+                                ignore_index = True).round(2)
+winning_batsman_data = pd.concat([winning_batsman_data,
+                                 pd.DataFrame(winning_batsman_data
+                                              .select_dtypes(include = 'number')
+                                              .mean()).T],
+                                ignore_index = True).round(2)
+losing_bowler_data = pd.concat([losing_bowler_data,
+                                 pd.DataFrame(losing_bowler_data
+                                              .select_dtypes(include = 'number')
+                                              .mean()).T],
+                                ignore_index = True).round(2)
+losing_batsman_data = pd.concat([losing_batsman_data,
+                                 pd.DataFrame(losing_batsman_data
+                                              .select_dtypes(include = 'number')
+                                              .mean()).T],
+                                ignore_index = True).round(2)
+
+winning_bowler_data.at[0, 'SEASON'] = 'Ball in Play League 1 Game Averages'
+winning_batsman_data.at[0, 'SEASON'] = 'Ball in Play League 1 Game Averages'
+losing_bowler_data.at[0, 'SEASON'] = 'Ball in Play League 1 Game Averages'
+losing_batsman_data.at[0, 'SEASON'] = 'Ball in Play League 1 Game Averages'
+
+winning_bowler_data.at[1, 'SEASON'] = "Captain's League 2024 Game Averages"
+winning_batsman_data.at[1, 'SEASON'] = "Captain's League 2024 Game Averages"
+losing_bowler_data.at[1, 'SEASON'] = "Captain's League 2024 Game Averages"
+losing_batsman_data.at[1, 'SEASON'] = "Captain's League 2024 Game Averages"
+
+winning_bowler_data.at[2, 'SEASON'] = 'All Game Averages'
+winning_batsman_data.at[2, 'SEASON'] = 'All Game Averages'
+losing_bowler_data.at[2, 'SEASON'] = 'All Game Averages'
+losing_batsman_data.at[2, 'SEASON'] = 'All Game Averages'
+
+
+
+
+
+
+
+
+
 
 # Initialize the Dash app
 #app = dash.Dash(__name__)
@@ -181,8 +333,10 @@ sidebar = html.Div(
 #         html.Hr(),
         dbc.Nav(
             [
-                dbc.NavLink("Player Stats", href="/", active="exact"),
+                dbc.NavLink("Home", href="/", active="exact"),
+                dbc.NavLink("Player Stats", href="/page-1", active="exact"),
                 dbc.NavLink("Team Stats", href="/page-2", active="exact"),
+                dbc.NavLink("Game Stats", href="/page-3", active="exact")
             ],
             vertical=True,
             pills=True,
@@ -191,9 +345,14 @@ sidebar = html.Div(
     style=SIDEBAR_STYLE,
 )
 
+home_page = html.Div([
+            html.H1("Ball in Play Dashboard", style={'textAlign': 'center', 'color': '#4CAF50', 'marginBottom': 20, 'font-family': 'Arial, sans-serif'}),
+            html.H2("Home Page", style={'textAlign': 'center', 'color': '#4CAF50', 'marginBottom': 20, 'font-family': 'Arial, sans-serif'}),
+    ], style={'font-family': 'Arial, sans-serif'})  # , 'width': '90%', 'margin': 'auto'})
+    
 player_page = html.Div([
             html.H1("Ball in Play Dashboard", style={'textAlign': 'center', 'color': '#4CAF50', 'marginBottom': 20, 'font-family': 'Arial, sans-serif'}),
-            html.H2("Players Stats", style={'textAlign': 'center', 'color': '#4CAF50', 'marginBottom': 20, 'font-family': 'Arial, sans-serif'}),
+            html.H2("Player Stats", style={'textAlign': 'center', 'color': '#4CAF50', 'marginBottom': 20, 'font-family': 'Arial, sans-serif'}),
     
             dcc.Tabs([
                 # Tab for Bowler Data
@@ -704,6 +863,95 @@ team_page = html.Div([
     ], style={'font-family': 'Arial, sans-serif'})  # , 'width': '90%', 'margin': 'auto'})
 
 
+
+game_page = html.Div([
+            html.H1("Ball in Play Dashboard", style={'textAlign': 'center', 'color': '#4CAF50', 'marginBottom': 20, 'font-family': 'Arial, sans-serif'}),
+            html.H2("Game Stats", style={'textAlign': 'center', 'color': '#4CAF50', 'marginBottom': 20, 'font-family': 'Arial, sans-serif'}),
+    
+            
+                html.H3("Winning Bowling Stats Line", style={'textAlign': 'center', 'color': '#4CAF50', 'marginBottom': 10}),
+                    dash_table.DataTable(
+                        id='winning-bowler',
+                        columns=[
+                            {"name": i, "id": i} for i in winning_bowler_data.columns
+                        ],
+                        data=winning_bowler_data.to_dict('records'),
+                        style_table={'overflowX': 'auto',
+                                     'border': '2px solid #4CAF50',
+                                     'boxShadow': '0px 0px 10px #888888',
+                                     'minWidth': '100%'},
+                        style_header={'backgroundColor': '#4CAF50', 'color': 'white', 'textAlign': 'center', 'font-family': 'Arial, sans-serif'},
+                        style_cell={'textAlign': 'center', 'font-family': 'Arial, sans-serif'},
+                        sort_action='native',  # 'native' enables sorting on the client side
+                        sort_mode='multi',  # 'multi' allows sorting by multiple columns
+                        fixed_columns={'headers': True, 'data': 1}
+                    ),
+                
+                html.Div(style={'marginBottom': 40}),
+    
+                html.H3("Losing Bowling Stats Line", style={'textAlign': 'center', 'color': '#4CAF50', 'marginBottom': 10}),
+                    dash_table.DataTable(
+                        id='losing-bowler',
+                        columns=[
+                            {"name": i, "id": i} for i in losing_bowler_data.columns
+                        ],
+                        data=losing_bowler_data.to_dict('records'),
+                        style_table={'overflowX': 'auto',
+                                     'border': '2px solid #4CAF50',
+                                     'boxShadow': '0px 0px 10px #888888',
+                                     'minWidth': '100%'},
+                        style_header={'backgroundColor': '#4CAF50', 'color': 'white', 'textAlign': 'center', 'font-family': 'Arial, sans-serif'},
+                        style_cell={'textAlign': 'center', 'font-family': 'Arial, sans-serif'},
+                        sort_action='native',  # 'native' enables sorting on the client side
+                        sort_mode='multi',  # 'multi' allows sorting by multiple columns
+                        fixed_columns={'headers': True, 'data': 1}
+                    ),
+                
+                html.Div(style={'marginBottom': 40}),
+                html.Div(style={'marginBottom': 40}),
+    
+                html.H3("Winning Batting Stats Line", style={'textAlign': 'center', 'color': '#4CAF50', 'marginBottom': 10}),
+                    dash_table.DataTable(
+                        id='winning-batter',
+                        columns=[
+                            {"name": i, "id": i} for i in winning_batsman_data.columns
+                        ],
+                        data=winning_batsman_data.to_dict('records'),
+                        style_table={'overflowX': 'auto',
+                                     'border': '2px solid #4CAF50',
+                                     'boxShadow': '0px 0px 10px #888888',
+                                     'minWidth': '100%'},
+                        style_header={'backgroundColor': '#4CAF50', 'color': 'white', 'textAlign': 'center', 'font-family': 'Arial, sans-serif'},
+                        style_cell={'textAlign': 'center', 'font-family': 'Arial, sans-serif'},
+                        sort_action='native',  # 'native' enables sorting on the client side
+                        sort_mode='multi',  # 'multi' allows sorting by multiple columns
+                        fixed_columns={'headers': True, 'data': 1}
+                    ),
+            
+                html.Div(style={'marginBottom': 40}),
+    
+                html.H3("Losing Batting Stats Line", style={'textAlign': 'center', 'color': '#4CAF50', 'marginBottom': 10}),
+                    dash_table.DataTable(
+                        id='losing-batsman',
+                        columns=[
+                            {"name": i, "id": i} for i in losing_batsman_data.columns
+                        ],
+                        data=losing_batsman_data.to_dict('records'),
+                        style_table={'overflowX': 'auto',
+                                     'border': '2px solid #4CAF50',
+                                     'boxShadow': '0px 0px 10px #888888',
+                                     'minWidth': '100%'},
+                        style_header={'backgroundColor': '#4CAF50', 'color': 'white', 'textAlign': 'center', 'font-family': 'Arial, sans-serif'},
+                        style_cell={'textAlign': 'center', 'font-family': 'Arial, sans-serif'},
+                        sort_action='native',  # 'native' enables sorting on the client side
+                        sort_mode='multi',  # 'multi' allows sorting by multiple columns
+                        fixed_columns={'headers': True, 'data': 1}
+                    )
+    
+    ], style={'font-family': 'Arial, sans-serif'})  # , 'width': '90%', 'margin': 'auto'})
+
+
+                            
 content = html.Div(id="page-content", style=CONTENT_STYLE)
 
 app.layout = html.Div([dcc.Location(id="url"), sidebar, content])
@@ -714,13 +962,14 @@ app.layout = html.Div([dcc.Location(id="url"), sidebar, content])
 
 @app.callback(Output("page-content", "children"), [Input("url", "pathname")])
 def render_page_content(pathname):
-#     if pathname == "/":
-#         return html.P("This is the content of the home page!")
     if pathname == "/":
-        # Define the layout of the app with tabs
+        return home_page #html.P("This is the content of the home page!")
+    elif pathname == "/page-1":
         return player_page
     elif pathname == "/page-2":
         return team_page
+    elif pathname == "/page-3":
+        return game_page
     # If the user tries to reach a different page, return a 404 message
     return html.Div(
         [
@@ -1257,7 +1506,7 @@ def update_scatter_plot_batsman(selected_seasons, selected_batsmen, scatter_colo
         )
 
     return fig
-
+    
     
 # Run the app
 if __name__ == '__main__':
