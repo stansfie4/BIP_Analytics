@@ -1,6 +1,7 @@
 import dash
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
+import dash_daq as daq
 import dash_html_components as html
 from dash.dependencies import Input, Output
 import dash_table
@@ -19,7 +20,10 @@ def calc_bowler_columns (df, plus_stats, drop_index):
     df['WICKET RATE'] = round(df['WICKET'] / df['TRUE_OVERS'], 2)
     df['DOT RATE'] = round(df['DOT'] / df['TRUE_OVERS'], 2)
     df['WIDE RATE'] = round(df['WIDE BALLS'] / df['TRUE_OVERS'], 2)
-    df = df.merge(df.groupby('SEASON')[['ECONOMY', 'WICKET RATE', 'DOT RATE', 'WIDE RATE']]
+    df.drop(columns = ['TRUE_OVERS'], inplace = True)
+    
+    if plus_stats == True:
+        df = df.merge(df.groupby('SEASON')[['ECONOMY', 'WICKET RATE', 'DOT RATE', 'WIDE RATE']]
                   .transform('mean')
                   .rename(columns={'ECONOMY' : 'season_mean_economy',
                                    'WICKET RATE' : 'season_mean_wicket',
@@ -27,19 +31,16 @@ def calc_bowler_columns (df, plus_stats, drop_index):
                                    'WIDE RATE' : 'season_mean_wide'}),
                               left_index = True,
                               right_index = True)
-    
-    if plus_stats == True:
         df['ECONOMY+'] = round(df['season_mean_economy'] / df['ECONOMY'] * 100, 0)
         df['WICKET RATE+'] = round(df['WICKET RATE'] / df['season_mean_wicket'] * 100, 0)
         df['DOT RATE+'] = round(df['DOT RATE'] / df['season_mean_dot'] * 100, 0)
         df['WIDE RATE+'] = round(df['season_mean_wide'] / df['WIDE RATE'] * 100, 0)
         
-    df.drop(columns = ['TRUE_OVERS',
-                       'season_mean_economy',
-                       'season_mean_wicket',
-                       'season_mean_dot',
-                       'season_mean_wide'
-                      ], inplace = True)
+        df.drop(columns = ['season_mean_economy',
+                           'season_mean_wicket',
+                           'season_mean_dot',
+                           'season_mean_wide'
+                          ], inplace = True)
     overs = df.pop('OVERS') # move overs to second column
     df.insert = df.insert(1, overs.name, overs)
     df = df.reset_index(drop = drop_index)
@@ -65,7 +66,9 @@ def calc_batsman_columns (df, plus_stats, drop_index):
     else:
         df['BALLS / INNING'] = round(df['BALLS FACED'] / 2, 2)
     
-    df = df.merge(df.groupby('SEASON')[['STRIKE RATE', 'AVG / INNINGS', 'BALLS FACED', 'WICKET','BALLS / INNING']]
+    
+    if plus_stats == True:
+        df = df.merge(df.groupby('SEASON')[['STRIKE RATE', 'AVG / INNINGS', 'BALLS FACED', 'WICKET','BALLS / INNING']]
                   .transform('mean')
                   .rename(columns={'STRIKE RATE' : 'season_mean_sr',
                                    'AVG / INNINGS' : 'season_mean_api',
@@ -74,19 +77,17 @@ def calc_batsman_columns (df, plus_stats, drop_index):
                                    'BALLS / INNING' : 'season_mean_bpi'}),
                               left_index = True,
                               right_index = True)
-    
-    if plus_stats == True:
         df['STRIKE RATE+'] = round(df['STRIKE RATE'] / df['season_mean_sr'] * 100, 0)
         df['AVG / INNINGS+'] = round(df['AVG / INNINGS'] / df['season_mean_api'] * 100, 0)
         df['BALLS / WICKET+'] = round(df['BALLS / WICKET'] / (df['season_mean_balls'] / df['season_mean_wicket'])* 100, 0)
         df['BALLS / INNING+'] = round(df['BALLS / INNING'] / df['season_mean_bpi'] * 100, 0)
         
-    df.drop(columns = ['season_mean_sr',
-                       'season_mean_api',
-                       'season_mean_balls',
-                       'season_mean_wicket',
-                       'season_mean_bpi'
-                      ], inplace = True)
+        df.drop(columns = ['season_mean_sr',
+                           'season_mean_api',
+                           'season_mean_balls',
+                           'season_mean_wicket',
+                           'season_mean_bpi'
+                          ], inplace = True)
     df = df.reset_index(drop = drop_index)
 
     return df
@@ -336,7 +337,7 @@ sidebar = html.Div(
                 dbc.NavLink("Home", href="/", active="exact"),
                 dbc.NavLink("Player Stats", href="/page-1", active="exact"),
                 dbc.NavLink("Team Stats", href="/page-2", active="exact"),
-                dbc.NavLink("Game Stats", href="/page-3", active="exact")
+                dbc.NavLink("Game Summary Stats", href="/page-3", active="exact")
             ],
             vertical=True,
             pills=True,
@@ -393,6 +394,14 @@ player_page = html.Div([
                         id='bowler-minimum',
                         type = 'number',
                         value=0,
+                    ),
+                            
+                    daq.BooleanSwitch(
+                        id='bowler-combined-season-switch',
+                        on=False,
+                        label='Combine Seasons',
+                        #style={'textAlign': 'left'},
+                        style={'marginBottom': 10}
                     ),
 
                     html.H3("Bowler Data Table", style={'textAlign': 'center', 'color': '#4CAF50', 'marginBottom': 10}),
@@ -866,7 +875,7 @@ team_page = html.Div([
 
 game_page = html.Div([
             html.H1("Ball in Play Dashboard", style={'textAlign': 'center', 'color': '#4CAF50', 'marginBottom': 20, 'font-family': 'Arial, sans-serif'}),
-            html.H2("Game Stats", style={'textAlign': 'center', 'color': '#4CAF50', 'marginBottom': 20, 'font-family': 'Arial, sans-serif'}),
+            html.H2("Game Summary Stats", style={'textAlign': 'center', 'color': '#4CAF50', 'marginBottom': 20, 'font-family': 'Arial, sans-serif'}),
     
             
                 html.H3("Winning Bowling Stats Line", style={'textAlign': 'center', 'color': '#4CAF50', 'marginBottom': 10}),
@@ -1040,9 +1049,10 @@ def update_bowler_values(n_clicks_select_all, n_clicks_deselect_all):
     Output('data-table-bowler', 'data'),
     [Input('season-toggle-bowler', 'value'),
      Input('bowler-dropdown', 'value'),
-     Input('bowler-minimum', 'value')]
+     Input('bowler-minimum', 'value'),
+     Input('bowler-combined-season-switch', 'on')]
 )
-def update_data_table_bowler(selected_seasons, selected_bowlers, bowler_minimum):
+def update_data_table_bowler(selected_seasons, selected_bowlers, bowler_minimum, combine_switch):
     
 #     grouped_bowler_data = full_data.groupby(['SEASON', 'BOWLER']).agg({'DELIVERED' : 'sum',
 #                                                                    'RUNS' : 'sum',
@@ -1068,7 +1078,15 @@ def update_data_table_bowler(selected_seasons, selected_bowlers, bowler_minimum)
     filtered_df = grouped_bowler_data[grouped_bowler_data['SEASON'].isin(selected_seasons) \
                                       & grouped_bowler_data['BOWLER'].isin(selected_bowlers) \
                                       & (grouped_bowler_data['OVERS'] > bowler_minimum)]
+    
+    
+    if combine_switch == True:
+        filtered_df = filtered_df.groupby(['BOWLER']).mean(numeric_only = True).round(2)
+        filtered_df = filtered_df.reset_index(drop = False)
+        filtered_df.insert(loc = 0, column = 'SEASON', value = 'Combined Seasons')
+     
     table_data = filtered_df.to_dict('records')
+    
     return table_data
 
 
